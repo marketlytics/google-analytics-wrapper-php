@@ -38,7 +38,7 @@ class GoogleAnalyticsWrapper {
    *
    * @param String $applicationName => Can be any name
    * @param String $ServiceAccountEmail => From Google Developer console (email field)
-   * @param String $keyFileLocation => The path to
+   * @param String $keyFileLocation => The path to p12 file
    * @return GoogleAnalyticsWrapper
    */
   public function __construct($applicationName, $serviceAccountEmail, $keyFileLocation) {

@@ -1,4 +1,4 @@
-Google Analytics Wrapper for Google API PHP Client
+## Google Analytics Wrapper for Google API PHP Client
 
 ===========
 
