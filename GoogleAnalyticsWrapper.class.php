@@ -23,13 +23,13 @@
  *
  */
 
-require_once('google-api-php-client/src/Google/autoload.php');
+require_once('google-api-php/src/Google/autoload.php');
 
 class GoogleAnalyticsWrapper {
 
   private $client = null;
   private $analytics = null;
-
+  private $batch = null;
 
   /**
    * Constructor function for all new gapi instances
@@ -61,6 +61,44 @@ class GoogleAnalyticsWrapper {
 
     $this -> client = $client;
     $this -> analytics = $analytics;
+  }
+
+
+  /**
+    * Starts the batch request.
+    *
+    * @return void
+    */
+  public function initBatchRequest() {
+      $this -> client -> setUseBatch(true);
+      $this -> batch = new Google_Http_Batch($this -> client);
+  }
+
+  /**
+    * Adds the query to the batch request.
+    *
+    * @return void
+    */
+  public function addBatchRequest($name, $profileId, $metrics, $startDate, $endDate, $options) {
+      $this -> batch -> add($this -> query($profileId, $metrics, $startDate, $endDate, $options), $name);
+  }
+
+  /**
+    * Executes the batch request, returning all the data after processing it
+    *
+    * @return data of all the request.
+    */
+  public function executeBatch() {
+      $result = $this -> batch -> execute();
+      $parsedResponse = array();
+
+      foreach($result as $name => $result) {
+          $parsedResponse[str_replace('response-', '', $name)] = $this -> parseData($result);
+      }
+
+      $this -> batch = null;
+      $this -> client -> setUseBatch(false);
+      return $parsedResponse;
   }
 
   /**
@@ -95,19 +133,20 @@ class GoogleAnalyticsWrapper {
    *
    */
   private function parseData($result) {
+    if(!isset($result -> columnHeaders) || !isset($result -> rows)) {
+        return array();
+    }
+
     $columns = $result -> columnHeaders;
     $data = $result -> rows;
     $parsedResult = array();
 
-    if($data && $columns) {
-
-        foreach($data as $item) {
-            $parsedItem = array();
-            foreach($columns as $index => $column) {
-                $parsedItem[$column -> name] = $item[$index];
-            }
-            $parsedResult[] = $parsedItem;
+    foreach($data as $item) {
+        $parsedItem = array();
+        foreach($columns as $index => $column) {
+            $parsedItem[$column -> name] = $item[$index];
         }
+        $parsedResult[] = $parsedItem;
     }
 
     return $parsedResult;
@@ -144,6 +183,10 @@ class GoogleAnalyticsWrapper {
     }
 
     $result = $this -> analytics -> data_ga -> get($profileId, $startDate, $endDate, $metrics, $options);
+
+    if($this -> client -> shouldDefer()) {
+      return $result; // we just need the actual query then
+    }
 
     if($result) {
         return $this -> parseData($result);
